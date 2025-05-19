@@ -1,0 +1,142 @@
+
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader } from 'lucide-react';
+import authService from '@/services/authService';
+
+const Signup = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    firstname: '',
+    lastname: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.signup(formData);
+      
+      if (response.status === 'success') {
+        navigate('/verify-email', { state: { email: formData.email } });
+      }
+    } catch (error) {
+      let errorMessage = 'Signup failed. Please try again.';
+      
+      if (error.data && error.data.message) {
+        if (typeof error.data.message === 'string') {
+          errorMessage = error.data.message;
+        } else if (typeof error.data.message === 'object') {
+          // Handle nested error messages from the API
+          const messages = Object.values(error.data.message).flat();
+          errorMessage = Array.isArray(messages) && messages.length > 0 
+            ? messages.join('. ') 
+            : errorMessage;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">Sign up</CardTitle>
+          <CardDescription className="text-center">
+            Create an account to get started
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="firstname" className="text-sm font-medium">First Name</label>
+                <Input
+                  id="firstname"
+                  name="firstname"
+                  placeholder="John"
+                  value={formData.firstname}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="lastname" className="text-sm font-medium">Last Name</label>
+                <Input
+                  id="lastname"
+                  name="lastname"
+                  placeholder="Doe"
+                  value={formData.lastname}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">Email</label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="your@email.com"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">Password</label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {loading ? "Signing up..." : "Sign up"}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary">
+              Login
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+};
+
+export default Signup;

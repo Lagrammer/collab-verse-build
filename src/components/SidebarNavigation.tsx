@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Home, Search, Bell, MessageSquare, Bookmark, BarChart2, Palette, Settings } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Home, Search, Bell, MessageSquare, Bookmark, BarChart2, Palette, Settings, Users, LogOut } from 'lucide-react';
 import AppLogo from './AppLogo';
+import authService from '@/services/authService';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -34,6 +35,13 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, to, notificationCount, a
 };
 
 const SidebarNavigation: React.FC = () => {
+  const location = useLocation();
+  const currentPath = location.pathname;
+  
+  const handleLogout = () => {
+    authService.logout();
+  };
+  
   return (
     <div className="bg-sidebar h-screen w-64 flex flex-col border-r border-sidebar-border">
       <div className="p-5">
@@ -58,19 +66,76 @@ const SidebarNavigation: React.FC = () => {
 
       <div className="flex-1 flex flex-col px-2 py-4 overflow-y-auto">
         <nav className="space-y-1">
-          <NavItem icon={<Home size={20} />} label="Home" to="/" active={true} />
-          <NavItem icon={<Search size={20} />} label="Explore" to="/explore" />
-          <NavItem icon={<Bell size={20} />} label="Notifications" to="/notifications" notificationCount={3} />
-          <NavItem icon={<MessageSquare size={20} />} label="Inbox" to="/inbox" notificationCount={2} />
-          <NavItem icon={<Bookmark size={20} />} label="Saved Ideas" to="/saved" />
-          <NavItem icon={<BarChart2 size={20} />} label="Analytics" to="/analytics" />
-          <NavItem icon={<Palette size={20} />} label="Theme" to="/theme" />
-          <NavItem icon={<Settings size={20} />} label="Settings" to="/settings" />
+          <NavItem 
+            icon={<Home size={20} />} 
+            label="Home" 
+            to="/" 
+            active={currentPath === '/'} 
+          />
+          <NavItem 
+            icon={<Search size={20} />} 
+            label="Explore" 
+            to="/explore" 
+            active={currentPath === '/explore'} 
+          />
+          <NavItem 
+            icon={<Bell size={20} />} 
+            label="Notifications" 
+            to="/notifications" 
+            notificationCount={3} 
+            active={currentPath === '/notifications'} 
+          />
+          <NavItem 
+            icon={<MessageSquare size={20} />} 
+            label="Messages" 
+            to="/chat" 
+            notificationCount={2} 
+            active={currentPath.startsWith('/chat')} 
+          />
+          <NavItem 
+            icon={<Bookmark size={20} />} 
+            label="Saved Ideas" 
+            to="/saved" 
+            active={currentPath === '/saved'} 
+          />
+          <NavItem 
+            icon={<Users size={20} />} 
+            label="Contributions" 
+            to="/contributions/received" 
+            active={currentPath.startsWith('/contributions')} 
+          />
+          <NavItem 
+            icon={<BarChart2 size={20} />} 
+            label="Analytics" 
+            to="/analytics" 
+            active={currentPath === '/analytics'} 
+          />
+          <NavItem 
+            icon={<Palette size={20} />} 
+            label="Theme" 
+            to="/theme" 
+            active={currentPath === '/theme'} 
+          />
+          <NavItem 
+            icon={<Settings size={20} />} 
+            label="Settings" 
+            to="/settings" 
+            active={currentPath === '/settings'} 
+          />
         </nav>
       </div>
 
       <div className="p-4">
-        <button className="w-full py-3 px-4 bg-sidebar-primary text-sidebar-primary-foreground rounded-lg font-medium hover:bg-sidebar-primary/90 transition-colors">
+        <div className="w-full">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-sidebar-accent transition-colors text-red-400 hover:text-red-500"
+          >
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
+        </div>
+        <button className="w-full py-3 px-4 mt-2 bg-sidebar-primary text-sidebar-primary-foreground rounded-lg font-medium hover:bg-sidebar-primary/90 transition-colors">
           Share Your Idea
         </button>
       </div>

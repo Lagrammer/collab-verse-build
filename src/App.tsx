@@ -11,7 +11,15 @@ import Index from "./pages/Index";
 import Explore from "./pages/Explore";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Theme from "./pages/Theme";
+import Chat from "./pages/Chat";
+import ChatDetail from "./pages/ChatDetail";
+import ReceivedContributions from "./pages/ReceivedContributions";
+import SentContributions from "./pages/SentContributions";
 
 // Auth guard
 import { ProtectedRoute, PublicOnlyRoute } from "./lib/authGuard";
@@ -42,6 +50,38 @@ const App = () => (
                 </PublicOnlyRoute>
               } 
             />
+            <Route 
+              path="/signup" 
+              element={
+                <PublicOnlyRoute>
+                  <Signup />
+                </PublicOnlyRoute>
+              } 
+            />
+            <Route 
+              path="/verify-email" 
+              element={
+                <PublicOnlyRoute>
+                  <VerifyEmail />
+                </PublicOnlyRoute>
+              } 
+            />
+            <Route 
+              path="/forgot-password" 
+              element={
+                <PublicOnlyRoute>
+                  <ForgotPassword />
+                </PublicOnlyRoute>
+              } 
+            />
+            <Route 
+              path="/reset-password" 
+              element={
+                <PublicOnlyRoute>
+                  <ResetPassword />
+                </PublicOnlyRoute>
+              } 
+            />
             
             {/* Protected routes */}
             <Route 
@@ -65,6 +105,38 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Theme />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/chat" 
+              element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/chat/:slug" 
+              element={
+                <ProtectedRoute>
+                  <ChatDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/contributions/received" 
+              element={
+                <ProtectedRoute>
+                  <ReceivedContributions />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/contributions/sent" 
+              element={
+                <ProtectedRoute>
+                  <SentContributions />
                 </ProtectedRoute>
               } 
             />
