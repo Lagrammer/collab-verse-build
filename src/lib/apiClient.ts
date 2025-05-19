@@ -1,5 +1,5 @@
 
-import { API_BASE_URL, DEFAULT_HEADERS } from '@/config/api';
+import { API_BASE_URL, DEFAULT_HEADERS, STORAGE_KEYS } from '@/config/api';
 
 interface RequestOptions extends RequestInit {
   timeout?: number;
@@ -25,7 +25,7 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     
     // Get auth token from localStorage if available
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     
     // Prepare headers with authentication if token exists
     const requestHeaders = {
@@ -52,7 +52,7 @@ class ApiClient {
         const errorData = await response.json().catch(() => ({}));
         throw {
           status: response.status,
-          message: errorData.message || response.statusText,
+          message: errorData.message || errorData.detail || response.statusText,
           data: errorData,
         };
       }
@@ -79,26 +79,35 @@ class ApiClient {
   }
 
   async post<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    const isFormData = data instanceof FormData;
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      headers: isFormData ? {} : options.headers, // Let browser set content-type for FormData
     });
   }
 
   async put<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    const isFormData = data instanceof FormData;
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      headers: isFormData ? {} : options.headers,
     });
   }
 
   async patch<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    const isFormData = data instanceof FormData;
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      headers: isFormData ? {} : options.headers,
     });
   }
 

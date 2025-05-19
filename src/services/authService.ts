@@ -1,28 +1,18 @@
 
 import apiClient from '@/lib/apiClient';
+import { STORAGE_KEYS } from '@/config/api';
 import { toast } from '@/components/ui/sonner';
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface SignupCredentials {
+export interface SignupRequest {
   email: string;
   password: string;
   firstname: string;
   lastname: string;
 }
 
-export interface AuthResponse {
-  status: string;
-  action?: string;
-  message?: string;
-  access_token?: string;
-  refresh_token?: string;
-  user?: {
-    email: string;
-  };
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
 export interface VerifyEmailRequest {
@@ -30,43 +20,81 @@ export interface VerifyEmailRequest {
   otp: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface TokenRefreshRequest {
+  refresh: string;
+}
+
+export interface AuthResponse {
+  status: string;
+  action?: string;
+  access_token?: string;
+  refresh_token?: string;
+  message?: string | Record<string, string[]>;
+  user?: {
+    email: string;
+  };
+}
+
+export interface User {
+  id?: number;
+  email: string;
+  firstname?: string;
+  lastname?: string;
+  username?: string;
+}
+
 /**
  * Service for handling authentication-related API calls
  */
 export const authService = {
   /**
-   * Log in a user
+   * Sign up a new user
    */
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+  async signup(data: SignupRequest): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/login/', credentials);
-      
-      if (response.status === 'success' && response.access_token) {
-        // Store tokens
-        localStorage.setItem('authToken', response.access_token);
-        localStorage.setItem('refreshToken', response.refresh_token!);
-        return response;
-      }
-      
+      const response = await apiClient.post<AuthResponse>('/auth/signup/', data);
+      toast.success('Signup successful! Please check your email for verification.');
       return response;
-    } catch (error) {
-      toast.error('Login failed: ' + (error.message || 'Something went wrong'));
-      throw error;
-    }
-  },
-  
-  /**
-   * Register a new user
-   */
-  async signup(credentials: SignupCredentials): Promise<AuthResponse> {
-    try {
-      return await apiClient.post<AuthResponse>('/auth/signup/', credentials);
     } catch (error) {
       toast.error('Signup failed: ' + (error.message || 'Something went wrong'));
       throw error;
     }
   },
-  
+
+  /**
+   * Login with email and password
+   */
+  async login(data: LoginRequest): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/login/', data);
+      
+      // If login successful and tokens provided, store them
+      if (response.access_token && response.refresh_token) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.access_token);
+        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refresh_token);
+        toast.success('Login successful!');
+      } 
+      // If email verification required
+      else if (response.action === 'redirect to email verification page') {
+        toast.info('Please verify your email to continue.');
+      }
+      
+      return response;
+    } catch (error) {
+      toast.error('Login failed: ' + (error.message || 'Invalid credentials'));
+      throw error;
+    }
+  },
+
   /**
    * Verify email with OTP
    */
@@ -74,58 +102,103 @@ export const authService = {
     try {
       const response = await apiClient.post<AuthResponse>('/auth/verify-email/', data);
       
-      if (response.status === 'success' && response.access_token) {
-        // Store tokens
-        localStorage.setItem('authToken', response.access_token);
-        localStorage.setItem('refreshToken', response.refresh_token!);
+      if (response.access_token && response.refresh_token) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.access_token);
+        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refresh_token);
+        toast.success('Email verified successfully!');
       }
       
       return response;
     } catch (error) {
-      toast.error('Email verification failed: ' + (error.message || 'Something went wrong'));
+      toast.error('Email verification failed: ' + (error.message || 'Invalid or expired OTP'));
       throw error;
     }
   },
-  
+
   /**
-   * Log out the current user
+   * Resend verification OTP
+   */
+  async resendVerificationOtp(data: ForgotPasswordRequest): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/resend-verification-otp/', data);
+      toast.success('Verification code sent to your email.');
+      return response;
+    } catch (error) {
+      toast.error('Failed to send verification code: ' + (error.message || 'Something went wrong'));
+      throw error;
+    }
+  },
+
+  /**
+   * Request password reset
+   */
+  async forgotPassword(data: ForgotPasswordRequest): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/forgot-password/', data);
+      toast.success('Password reset instructions sent to your email.');
+      return response;
+    } catch (error) {
+      toast.error('Failed to send reset instructions: ' + (error.message || 'Something went wrong'));
+      throw error;
+    }
+  },
+
+  /**
+   * Reset password with token
+   */
+  async resetPassword(data: ResetPasswordRequest): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/reset-password/', data);
+      toast.success('Password reset successful! You can now login.');
+      return response;
+    } catch (error) {
+      toast.error('Failed to reset password: ' + (error.message || 'Invalid or expired token'));
+      throw error;
+    }
+  },
+
+  /**
+   * Refresh authentication tokens
+   */
+  async refreshToken(refreshToken: string): Promise<{ access: string; refresh: string }> {
+    try {
+      const data: TokenRefreshRequest = { refresh: refreshToken };
+      const response = await apiClient.post<{ access: string; refresh: string }>('/auth/token/refresh/', data);
+      
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.access);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refresh);
+      
+      return response;
+    } catch (error) {
+      // If refresh fails, log the user out
+      this.logout();
+      throw error;
+    }
+  },
+
+  /**
+   * Logout the current user
    */
   logout(): void {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
-    // Optionally redirect to login page
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+    toast.info('You have been logged out.');
+    window.location.href = '/login';
   },
-  
+
   /**
-   * Check if user is authenticated
+   * Check if the user is authenticated
    */
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('authToken');
+    return !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
   },
-  
+
   /**
-   * Refresh access token
+   * Get the current authentication token
    */
-  async refreshToken(): Promise<boolean> {
-    const refreshToken = localStorage.getItem('refreshToken');
-    
-    if (!refreshToken) {
-      return false;
-    }
-    
-    try {
-      const response = await apiClient.post<{ access: string; refresh: string }>(
-        '/auth/token/refresh/',
-        { refresh: refreshToken }
-      );
-      
-      localStorage.setItem('authToken', response.access);
-      localStorage.setItem('refreshToken', response.refresh);
-      return true;
-    } catch (error) {
-      this.logout();
-      return false;
-    }
+  getToken(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
   },
 };
 

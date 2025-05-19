@@ -9,3 +9,10 @@ export const DEFAULT_HEADERS = {
 
 // Timeout for API requests in milliseconds
 export const REQUEST_TIMEOUT = 30000;
+
+// Local storage keys
+export const STORAGE_KEYS = {
+  AUTH_TOKEN: 'authToken',
+  REFRESH_TOKEN: 'refreshToken',
+  USER_DATA: 'userData',
+};
