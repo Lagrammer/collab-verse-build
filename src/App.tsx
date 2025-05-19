@@ -24,11 +24,13 @@ import SentContributions from "./pages/SentContributions";
 // Auth guard
 import { ProtectedRoute, PublicOnlyRoute } from "./lib/authGuard";
 
+// Create a client with default options
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 60000, // 1 minute
     },
   },
 });
@@ -41,7 +43,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public routes */}
+            {/* Public routes - no authentication needed */}
             <Route 
               path="/login" 
               element={
@@ -83,7 +85,7 @@ const App = () => (
               } 
             />
             
-            {/* Protected routes */}
+            {/* Protected routes - authentication required */}
             <Route 
               path="/" 
               element={

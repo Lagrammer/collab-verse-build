@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,20 @@ const Signup = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check backend availability on component mount
+    const checkBackend = async () => {
+      const isAvailable = await authService.checkBackendAvailability();
+      setBackendAvailable(isAvailable);
+      if (!isAvailable) {
+        setError('Backend currently unavailable. Please try again later.');
+      }
+    };
+    
+    checkBackend();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -29,11 +43,25 @@ const Signup = () => {
     setLoading(true);
     setError(null);
     
+    // Re-check backend availability before attempting signup
+    const isAvailable = await authService.checkBackendAvailability();
+    if (!isAvailable) {
+      setError('Backend currently unavailable. Please try again later.');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await authService.signup(formData);
       
       if (response.status === 'success') {
-        navigate('/verify-email', { state: { email: formData.email } });
+        // Redirect to login instead of email verification
+        navigate('/login', { 
+          state: { 
+            signupSuccess: true, 
+            message: 'Signup successful! You can now login with your credentials.' 
+          } 
+        });
       }
     } catch (error) {
       let errorMessage = 'Signup failed. Please try again.';
@@ -71,6 +99,13 @@ const Signup = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          {backendAvailable === false && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>
+                Backend currently unavailable. Please try again later.
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -82,6 +117,7 @@ const Signup = () => {
                   value={formData.firstname}
                   onChange={handleChange}
                   required
+                  disabled={loading || backendAvailable === false}
                 />
               </div>
               <div className="space-y-2">
@@ -93,6 +129,7 @@ const Signup = () => {
                   value={formData.lastname}
                   onChange={handleChange}
                   required
+                  disabled={loading || backendAvailable === false}
                 />
               </div>
             </div>
@@ -106,6 +143,7 @@ const Signup = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                disabled={loading || backendAvailable === false}
               />
             </div>
             <div className="space-y-2">
@@ -118,9 +156,14 @@ const Signup = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                disabled={loading || backendAvailable === false}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading || backendAvailable === false}
+            >
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               {loading ? "Signing up..." : "Sign up"}
             </Button>

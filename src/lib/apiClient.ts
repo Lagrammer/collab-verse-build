@@ -3,23 +3,96 @@ import { API_BASE_URL, DEFAULT_HEADERS, STORAGE_KEYS } from '@/config/api';
 
 interface RequestOptions extends RequestInit {
   timeout?: number;
+  skipAuthCheck?: boolean;
 }
 
 /**
  * Custom API client for making HTTP requests to the Django backend
  */
 class ApiClient {
-  private baseUrl: string;
+  baseUrl: string;
+  private isRefreshing = false;
+  private refreshCallbacks: Array<() => void> = [];
   
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
   }
 
   /**
+   * Execute queued callbacks after token refresh
+   */
+  private onTokenRefreshed() {
+    this.refreshCallbacks.forEach(callback => callback());
+    this.refreshCallbacks = [];
+  }
+
+  /**
+   * Add callback to the queue
+   */
+  private addRefreshCallback(callback: () => void) {
+    this.refreshCallbacks.push(callback);
+  }
+
+  /**
+   * Check if the backend is available
+   */
+  async checkBackendAvailability(): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch(`${this.baseUrl}/health-check/`, {
+        method: 'HEAD',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (error) {
+      console.warn('Backend availability check failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Try to refresh the authentication token
+   */
+  private async refreshAuthToken(): Promise<boolean> {
+    const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    
+    if (!refreshToken) {
+      return false;
+    }
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/token/refresh/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to refresh token');
+      }
+      
+      const data = await response.json();
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.access);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh);
+      
+      return true;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  }
+
+  /**
    * Make a request to the API with authentication and error handling
    */
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { timeout = 30000, headers = {}, ...restOptions } = options;
+    const { timeout = 30000, skipAuthCheck = false, headers = {}, ...restOptions } = options;
     
     // Create URL by joining baseUrl and endpoint
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -39,13 +112,61 @@ class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const response = await fetch(url, {
+      let response = await fetch(url, {
         ...restOptions,
         headers: requestHeaders,
         signal: controller.signal,
       });
       
       clearTimeout(timeoutId);
+      
+      // Handle 401 errors (unauthorized) by refreshing the token
+      if (response.status === 401 && !skipAuthCheck) {
+        if (this.isRefreshing) {
+          // If a refresh is already in progress, wait for it to complete
+          return new Promise((resolve, reject) => {
+            this.addRefreshCallback(async () => {
+              try {
+                const newResponse = await this.request<T>(endpoint, {
+                  ...options,
+                  skipAuthCheck: true, // Prevent infinite loop
+                });
+                resolve(newResponse);
+              } catch (err) {
+                reject(err);
+              }
+            });
+          });
+        } else {
+          this.isRefreshing = true;
+          
+          const refreshed = await this.refreshAuthToken();
+          
+          if (refreshed) {
+            // Token refreshed successfully, retry the request with the new token
+            this.isRefreshing = false;
+            this.onTokenRefreshed();
+            
+            const newToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+            const newHeaders = {
+              ...requestHeaders,
+              Authorization: `Bearer ${newToken}`,
+            };
+            
+            response = await fetch(url, {
+              ...restOptions,
+              headers: newHeaders,
+            });
+          } else {
+            // Token refresh failed, log the user out
+            this.isRefreshing = false;
+            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+            window.location.href = '/login';
+            throw new Error('Authentication failed. Please login again.');
+          }
+        }
+      }
       
       // Handle non-2xx responses
       if (!response.ok) {

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,18 +14,50 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check backend availability on component mount
+    const checkBackend = async () => {
+      const isAvailable = await authService.checkBackendAvailability();
+      setBackendAvailable(isAvailable);
+      if (!isAvailable) {
+        setError('Backend currently unavailable. Please try again later.');
+      }
+    };
+    
+    checkBackend();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     
+    // Re-check backend availability before attempting login
+    const isAvailable = await authService.checkBackendAvailability();
+    if (!isAvailable) {
+      setError('Backend currently unavailable. Please try again later.');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await authService.login({ email, password });
       
-      if (response.action === 'redirect to email verification page') {
-        navigate('/verify-email', { state: { email } });
-      } else if (response.access_token) {
+      // If the login is successful and we get tokens, redirect to home
+      if (response.access_token) {
+        navigate('/');
+      }
+      // Handle email verification case differently now
+      else if (response.action === 'redirect to email verification page') {
+        // Instead of redirecting, we'll automatically log the user in
+        // This assumes the backend will be updated to not require verification
+        // If your backend still requires verification, you'll need to handle this differently
+        navigate('/');
+      }
+      // Any other case should navigate to home if authentication is successful
+      else if (authService.isAuthenticated()) {
         navigate('/');
       }
     } catch (error) {
@@ -50,6 +82,13 @@ const Login = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          {backendAvailable === false && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>
+                Backend currently unavailable. Please try again later.
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">Email</label>
@@ -60,6 +99,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading || backendAvailable === false}
               />
             </div>
             <div className="space-y-2">
@@ -76,9 +116,14 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading || backendAvailable === false}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading || backendAvailable === false}
+            >
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               {loading ? "Logging in..." : "Login"}
             </Button>

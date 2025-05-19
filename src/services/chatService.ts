@@ -42,9 +42,21 @@ export interface SendMessageRequest {
  */
 export const chatService = {
   /**
+   * Check if the backend API is available
+   */
+  async checkBackendAvailability(): Promise<boolean> {
+    return apiClient.checkBackendAvailability();
+  },
+
+  /**
    * Get all chats for the current user
    */
   async getAllChats(): Promise<Chat[]> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       return await apiClient.get<Chat[]>('/chats/');
     } catch (error) {
@@ -57,6 +69,11 @@ export const chatService = {
    * Create a new chat or get existing chat with another user
    */
   async createChat(data: CreateChatRequest): Promise<{ slug: string }> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       return await apiClient.post<{ slug: string }>('/chats/', data);
     } catch (error) {
@@ -69,6 +86,11 @@ export const chatService = {
    * Get a specific chat by slug
    */
   async getChatBySlug(slug: string): Promise<Chat> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       return await apiClient.get<Chat>(`/chats/${slug}/`);
     } catch (error) {
@@ -81,6 +103,11 @@ export const chatService = {
    * Send a message in a specific chat
    */
   async sendMessage(slug: string, data: SendMessageRequest): Promise<Message> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       return await apiClient.post<Message>(`/chats/${slug}/`, data);
     } catch (error) {
@@ -105,6 +132,11 @@ export const chatService = {
    * Delete a specific chat
    */
   async deleteChat(slug: string): Promise<void> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       await apiClient.delete(`/chats/${slug}/`);
       toast.success('Chat deleted successfully');
@@ -118,6 +150,11 @@ export const chatService = {
    * Delete a specific message
    */
   async deleteMessage(messageId: number): Promise<void> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       await apiClient.delete(`/messages/${messageId}/`);
       toast.success('Message deleted successfully');

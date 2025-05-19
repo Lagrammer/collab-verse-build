@@ -28,9 +28,21 @@ export interface ContributionResponse {
  */
 export const contributionService = {
   /**
+   * Check if the backend API is available
+   */
+  async checkBackendAvailability(): Promise<boolean> {
+    return apiClient.checkBackendAvailability();
+  },
+
+  /**
    * Get contribution requests received by the current user
    */
   async getReceivedRequests(): Promise<ContributionRequest[]> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       return await apiClient.get<ContributionRequest[]>('/contribution-requests/received/');
     } catch (error) {
@@ -43,6 +55,11 @@ export const contributionService = {
    * Get contribution requests sent by the current user
    */
   async getSentRequests(): Promise<{ status: string; contribution_requests: ContributionRequest[] }> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       return await apiClient.get<{ status: string; contribution_requests: ContributionRequest[] }>('/contribution-requests/sent/');
     } catch (error) {
@@ -55,6 +72,11 @@ export const contributionService = {
    * Approve a contribution request
    */
   async approveRequest(requestId: number): Promise<ContributionResponse> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       const response = await apiClient.post<ContributionResponse>(`/contribution-requests/${requestId}/approve/`);
       toast.success('Contribution request approved successfully');
@@ -69,6 +91,11 @@ export const contributionService = {
    * Reject a contribution request
    */
   async rejectRequest(requestId: number): Promise<ContributionResponse> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       const response = await apiClient.post<ContributionResponse>(`/contribution-requests/${requestId}/reject/`);
       toast.success('Contribution request rejected successfully');
@@ -83,6 +110,11 @@ export const contributionService = {
    * Send a contribution request for an idea
    */
   async sendRequest(ideaSlug: string): Promise<ContributionRequest> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       const response = await apiClient.post<ContributionRequest>(`/send-contribution-request/${ideaSlug}/`, {});
       toast.success('Contribution request sent successfully');
@@ -97,6 +129,11 @@ export const contributionService = {
    * Withdraw a contribution request
    */
   async withdrawRequest(requestId: number): Promise<ContributionResponse> {
+    if (!(await this.checkBackendAvailability())) {
+      toast.error('Backend currently unavailable. Please try again later.');
+      throw new Error('Backend currently unavailable. Please try again later.');
+    }
+
     try {
       const response = await apiClient.delete<ContributionResponse>(`/withdraw-contribution-request/${requestId}/`);
       toast.success('Contribution request withdrawn successfully');
