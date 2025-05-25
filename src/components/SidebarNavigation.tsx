@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Bell, MessageSquare, Bookmark, BarChart2, Palette, Settings, Users, LogOut } from 'lucide-react';
+import { Home, Search, Bell, MessageSquare, Bookmark, BarChart2, Palette, Settings, Users, LogOut, User } from 'lucide-react';
 import AppLogo from './AppLogo';
 import authService from '@/services/authService';
 
@@ -49,7 +49,7 @@ const SidebarNavigation: React.FC = () => {
       </div>
       
       <div className="p-4 space-y-1">
-        <div className="flex items-center gap-2 px-4 py-2">
+        <Link to="/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-sidebar-accent rounded-lg transition-colors">
           <div className="h-10 w-10 rounded-full bg-secondary overflow-hidden">
             <img 
               src="https://i.pravatar.cc/100?img=33" 
@@ -61,7 +61,7 @@ const SidebarNavigation: React.FC = () => {
             <p className="text-sidebar-foreground font-medium text-sm">User Name</p>
             <p className="text-sidebar-foreground/60 text-xs">@username</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="flex-1 flex flex-col px-2 py-4 overflow-y-auto">
@@ -103,6 +103,12 @@ const SidebarNavigation: React.FC = () => {
             label="Contributions" 
             to="/contributions/received" 
             active={currentPath.startsWith('/contributions')} 
+          />
+          <NavItem 
+            icon={<User size={20} />} 
+            label="Profile" 
+            to="/profile" 
+            active={currentPath === '/profile'} 
           />
           <NavItem 
             icon={<BarChart2 size={20} />} 

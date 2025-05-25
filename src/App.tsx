@@ -20,6 +20,7 @@ import Chat from "./pages/Chat";
 import ChatDetail from "./pages/ChatDetail";
 import ReceivedContributions from "./pages/ReceivedContributions";
 import SentContributions from "./pages/SentContributions";
+import Profile from "./pages/Profile";
 
 // Auth guard
 import { ProtectedRoute, PublicOnlyRoute } from "./lib/authGuard";
@@ -99,6 +100,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Explore />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               } 
             />
