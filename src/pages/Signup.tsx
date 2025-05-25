@@ -55,11 +55,11 @@ const Signup = () => {
       const response = await authService.signup(formData);
       
       if (response.status === 'success') {
-        // Redirect to login instead of email verification
-        navigate('/login', { 
+        // Redirect to email verification page
+        navigate('/verify-email', { 
           state: { 
-            signupSuccess: true, 
-            message: 'Signup successful! You can now login with your credentials.' 
+            email: formData.email,
+            message: 'Account created! Please check your email for a verification code.' 
           } 
         });
       }
@@ -105,7 +105,7 @@ const Signup = () => {
                 Backend currently unavailable. Please try again later.
               </AlertDescription>
             </Alert>
-          )}
+            )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

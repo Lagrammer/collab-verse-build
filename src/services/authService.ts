@@ -1,4 +1,3 @@
-
 import apiClient from '@/lib/apiClient';
 import { STORAGE_KEYS } from '@/config/api';
 import { toast } from '@/components/ui/sonner';
@@ -84,7 +83,7 @@ export const authService = {
 
     try {
       const response = await apiClient.post<AuthResponse>('/auth/signup/', data);
-      toast.success('Signup successful! You can now login with your credentials.');
+      toast.success('Signup successful! Please check your email for verification.');
       return response;
     } catch (error) {
       toast.error('Signup failed: ' + (error.message || 'Something went wrong'));
@@ -104,39 +103,22 @@ export const authService = {
     try {
       const response = await apiClient.post<AuthResponse>('/auth/login/', data);
       
-      // Store tokens regardless of email verification status
+      // Store tokens if we get them (successful login)
       if (response.access_token && response.refresh_token) {
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.access_token);
         localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refresh_token);
         toast.success('Login successful!');
         return response;
-      } 
-      
-      // If we have an action but no tokens, check if it's the email verification redirect
-      if (response.action === 'redirect to email verification page') {
-        // Instead of redirecting to verification, we'll try to auto-verify or bypass
-        try {
-          // Try an automatic login bypass (this would need to be supported by your backend)
-          const bypassResponse = await apiClient.post<AuthResponse>('/auth/login/bypass/', data);
-          
-          if (bypassResponse.access_token && bypassResponse.refresh_token) {
-            localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, bypassResponse.access_token);
-            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, bypassResponse.refresh_token);
-            toast.success('Login successful!');
-            return bypassResponse;
-          }
-          
-          // If bypass doesn't work, just assume success and return the original response
-          toast.info('Email verification skipped.');
-          return response;
-        } catch (bypassError) {
-          // If bypass fails, just return the original response
-          return response;
-        }
       }
       
+      // If no tokens but successful response, return as is for handling
       return response;
     } catch (error) {
+      // Don't show toast for verification errors, let the UI handle it
+      if (error.data && error.data.action === 'redirect to email verification page') {
+        throw error;
+      }
+      
       toast.error('Login failed: ' + (error.message || 'Invalid credentials'));
       throw error;
     }

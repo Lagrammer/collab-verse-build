@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,10 +10,12 @@ import authService from '@/services/authService';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -27,12 +29,18 @@ const Login = () => {
     };
     
     checkBackend();
-  }, []);
+
+    // Check for signup success message
+    if (location.state?.signupSuccess) {
+      setSuccess(location.state.message || 'Signup successful! You can now login with your credentials.');
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
     
     // Re-check backend availability before attempting login
     const isAvailable = await authService.checkBackendAvailability();
@@ -49,19 +57,31 @@ const Login = () => {
       if (response.access_token) {
         navigate('/');
       }
-      // Handle email verification case differently now
+      // Handle email verification case - redirect to verification page
       else if (response.action === 'redirect to email verification page') {
-        // Instead of redirecting, we'll automatically log the user in
-        // This assumes the backend will be updated to not require verification
-        // If your backend still requires verification, you'll need to handle this differently
-        navigate('/');
+        navigate('/verify-email', { 
+          state: { 
+            email: email,
+            message: response.message || 'Please verify your email to continue.' 
+          } 
+        });
       }
       // Any other case should navigate to home if authentication is successful
       else if (authService.isAuthenticated()) {
         navigate('/');
       }
     } catch (error) {
-      setError(typeof error.message === 'string' ? error.message : 'Login failed. Please try again.');
+      // Handle email verification specific error
+      if (error.data && error.data.action === 'redirect to email verification page') {
+        navigate('/verify-email', { 
+          state: { 
+            email: email,
+            message: error.data.message || 'Please verify your email to continue.' 
+          } 
+        });
+      } else {
+        setError(typeof error.message === 'string' ? error.message : 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,6 +100,11 @@ const Login = () => {
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert className="mb-4 bg-green-500/10 text-green-500 border-green-500/20">
+              <AlertDescription>{success}</AlertDescription>
             </Alert>
           )}
           {backendAvailable === false && (

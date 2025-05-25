@@ -24,6 +24,11 @@ const VerifyEmail = () => {
     if (location.state && location.state.email) {
       setEmail(location.state.email);
     }
+    
+    // Check if there's a message from signup/login
+    if (location.state && location.state.message) {
+      setSuccess(location.state.message);
+    }
   }, [location]);
 
   const handleVerify = async (e: React.FormEvent) => {
