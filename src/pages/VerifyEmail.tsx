@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Loader, ArrowLeft, Mail } from 'lucide-react';
 import authService from '@/services/authService';
 
@@ -70,7 +71,7 @@ const VerifyEmail = () => {
           </div>
           <CardTitle className="text-2xl font-bold text-center">Verify your email</CardTitle>
           <CardDescription className="text-center">
-            Enter the verification code sent to {email || "your email"}
+            Enter the 6-digit verification code sent to {email || "your email"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -99,15 +100,24 @@ const VerifyEmail = () => {
             )}
             <div className="space-y-2">
               <label htmlFor="otp" className="text-sm font-medium">Verification Code</label>
-              <Input
-                id="otp"
-                placeholder="Enter code"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-              />
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={(value) => setOtp(value)}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               {loading ? "Verifying..." : "Verify Email"}
             </Button>
