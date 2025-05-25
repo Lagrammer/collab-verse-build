@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Loader, Shield, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
+import apiClient from '@/lib/apiClient';
 import authService from '@/services/authService';
 
 interface UserProfile {
@@ -61,15 +61,14 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
     }
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // await apiClient.post('/auth/change-password/', {
-      //   current_password: passwordData.currentPassword,
-      //   new_password: passwordData.newPassword
-      // });
+      console.log('Changing password...');
       
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await apiClient.post('/auth/change-password/', {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword
+      });
       
+      console.log('Password changed successfully');
       setPasswordData({
         currentPassword: '',
         newPassword: '',
@@ -77,9 +76,16 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
       });
       toast.success('Password changed successfully!');
     } catch (error) {
+      console.error('Failed to change password:', error);
+      
       const errorMessage = error.message || 'Failed to change password';
-      setPasswordError(errorMessage);
-      toast.error(errorMessage);
+      
+      if (errorMessage.includes('Backend currently unavailable') || errorMessage.includes('Request timeout')) {
+        toast.warning('Password change failed - backend unavailable. Please try again later.');
+      } else {
+        setPasswordError(errorMessage);
+        toast.error(errorMessage);
+      }
     } finally {
       setPasswordLoading(false);
     }
@@ -94,17 +100,23 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
     setDeleteLoading(true);
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // await apiClient.delete('/auth/delete-account/');
+      console.log('Deleting account...');
       
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await apiClient.delete('/auth/delete-account/');
       
+      console.log('Account deleted successfully');
       toast.success('Account deleted successfully');
       authService.logout();
     } catch (error) {
+      console.error('Failed to delete account:', error);
+      
       const errorMessage = error.message || 'Failed to delete account';
-      toast.error(errorMessage);
+      
+      if (errorMessage.includes('Backend currently unavailable') || errorMessage.includes('Request timeout')) {
+        toast.error('Account deletion failed - backend unavailable. Please try again later.');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setDeleteLoading(false);
     }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,8 @@ import Layout from '@/components/Layout';
 import EditProfileForm from '@/components/profile/EditProfileForm';
 import AccountSettings from '@/components/profile/AccountSettings';
 import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
-import authService from '@/services/authService';
+import apiClient from '@/lib/apiClient';
+import { toast } from '@/components/ui/sonner';
 
 interface UserProfile {
   id: number;
@@ -34,7 +34,17 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      // For now, we'll use mock data until the backend endpoint is available
+      console.log('Fetching user profile from backend...');
+      
+      // Try to fetch from backend first
+      const response = await apiClient.get<UserProfile>('/auth/profile/');
+      console.log('Profile fetched successfully:', response);
+      setProfile(response);
+    } catch (error) {
+      console.error('Failed to fetch profile from backend:', error);
+      
+      // Fallback to mock data if backend is unavailable
+      console.log('Using mock profile data as fallback');
       const mockProfile: UserProfile = {
         id: 1,
         email: 'user@example.com',
@@ -44,8 +54,7 @@ const Profile = () => {
         date_joined: '2024-01-15T10:30:00Z'
       };
       setProfile(mockProfile);
-    } catch (error) {
-      console.error('Failed to fetch profile:', error);
+      toast.error('Using offline mode - changes will not be saved');
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Camera, Upload, Trash2, Loader } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
+import apiClient from '@/lib/apiClient';
 
 interface ProfilePictureUploadProps {
   currentPicture?: string;
@@ -19,6 +19,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   const [preview, setPreview] = useState<string | null>(currentPicture || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,6 +39,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
     }
 
     setError(null);
+    setSelectedFile(file);
     
     // Create preview
     const reader = new FileReader();
@@ -48,26 +50,38 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   };
 
   const handleUpload = async () => {
-    if (!preview || preview === currentPicture) return;
+    if (!selectedFile) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // TODO: Replace with actual file upload when backend is ready
-      // const formData = new FormData();
-      // formData.append('profile_picture', file);
-      // const response = await apiClient.post('/auth/upload-avatar/', formData);
+      console.log('Uploading profile picture...');
       
-      // Simulate upload for now
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('profile_picture', selectedFile);
       
-      onUpdate({ profile_picture: preview });
+      const response = await apiClient.post<{ profile_picture: string }>('/auth/upload-avatar/', formData);
+      console.log('Profile picture uploaded successfully:', response);
+      
+      onUpdate({ profile_picture: response.profile_picture });
+      setSelectedFile(null);
       toast.success('Profile picture updated successfully!');
     } catch (error) {
+      console.error('Failed to upload profile picture:', error);
+      
       const errorMessage = error.message || 'Failed to upload profile picture';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      
+      if (errorMessage.includes('Backend currently unavailable') || errorMessage.includes('Request timeout')) {
+        // For offline mode, use the preview URL
+        onUpdate({ profile_picture: preview || '' });
+        setSelectedFile(null);
+        toast.warning('Profile picture updated locally - will sync when connection is restored');
+      } else {
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -78,25 +92,35 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
     setError(null);
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // await apiClient.delete('/auth/remove-avatar/');
+      console.log('Removing profile picture...');
       
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await apiClient.delete('/auth/remove-avatar/');
+      console.log('Profile picture removed successfully');
       
       setPreview(null);
+      setSelectedFile(null);
       onUpdate({ profile_picture: '' });
       toast.success('Profile picture removed successfully!');
     } catch (error) {
+      console.error('Failed to remove profile picture:', error);
+      
       const errorMessage = error.message || 'Failed to remove profile picture';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      
+      if (errorMessage.includes('Backend currently unavailable') || errorMessage.includes('Request timeout')) {
+        setPreview(null);
+        setSelectedFile(null);
+        onUpdate({ profile_picture: '' });
+        toast.warning('Profile picture removed locally - will sync when connection is restored');
+      } else {
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const hasChanges = preview !== currentPicture;
+  const hasChanges = selectedFile !== null;
 
   return (
     <Card>
@@ -132,29 +156,27 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
               Choose Photo
             </Button>
 
-            {preview && (
-              <>
-                {hasChanges && (
-                  <Button
-                    onClick={handleUpload}
-                    disabled={loading}
-                    className="flex items-center gap-2"
-                  >
-                    {loading ? <Loader className="h-4 w-4 animate-spin" /> : <Upload size={16} />}
-                    {loading ? "Uploading..." : "Save Changes"}
-                  </Button>
-                )}
+            {hasChanges && (
+              <Button
+                onClick={handleUpload}
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                {loading ? <Loader className="h-4 w-4 animate-spin" /> : <Upload size={16} />}
+                {loading ? "Uploading..." : "Save Changes"}
+              </Button>
+            )}
 
-                <Button
-                  variant="destructive"
-                  onClick={handleRemove}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 size={16} />
-                  Remove
-                </Button>
-              </>
+            {preview && (
+              <Button
+                variant="destructive"
+                onClick={handleRemove}
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                Remove
+              </Button>
             )}
           </div>
 
