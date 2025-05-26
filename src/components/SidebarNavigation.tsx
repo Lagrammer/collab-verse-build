@@ -1,9 +1,10 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Bell, MessageSquare, Bookmark, BarChart2, Palette, Settings, Users, LogOut, User } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppLogo from './AppLogo';
 import authService from '@/services/authService';
+import apiClient from '@/lib/apiClient';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -11,6 +12,13 @@ interface NavItemProps {
   to: string;
   notificationCount?: number;
   active?: boolean;
+}
+
+interface UserProfile {
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture?: string;
 }
 
 const NavItem: React.FC<NavItemProps> = ({ icon, label, to, notificationCount, active }) => {
@@ -37,9 +45,42 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, to, notificationCount, a
 const SidebarNavigation: React.FC = () => {
   const location = useLocation();
   const currentPath = location.pathname;
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        console.log('Fetching user profile for sidebar...');
+        const profile = await apiClient.get<UserProfile>('/profile/me/');
+        console.log('User profile fetched for sidebar:', profile);
+        setUserProfile(profile);
+      } catch (error) {
+        console.error('Failed to fetch user profile for sidebar:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
   
   const handleLogout = () => {
     authService.logout();
+  };
+
+  const getUserInitials = () => {
+    if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name.charAt(0)}${userProfile.last_name.charAt(0)}`;
+    }
+    if (userProfile?.username) {
+      return userProfile.username.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
+  const getDisplayName = () => {
+    if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    }
+    return userProfile?.username || 'User';
   };
   
   return (
@@ -50,16 +91,17 @@ const SidebarNavigation: React.FC = () => {
       
       <div className="p-4 space-y-1">
         <Link to="/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-sidebar-accent rounded-lg transition-colors">
-          <div className="h-10 w-10 rounded-full bg-secondary overflow-hidden">
-            <img 
-              src="https://i.pravatar.cc/100?img=33" 
-              alt="Profile" 
-              className="h-full w-full object-cover"
-            />
-          </div>
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={userProfile?.profile_picture} alt="Profile" />
+            <AvatarFallback className="text-sm font-medium">
+              {getUserInitials()}
+            </AvatarFallback>
+          </Avatar>
           <div>
-            <p className="text-sidebar-foreground font-medium text-sm">User Name</p>
-            <p className="text-sidebar-foreground/60 text-xs">@username</p>
+            <p className="text-sidebar-foreground font-medium text-sm">{getDisplayName()}</p>
+            <p className="text-sidebar-foreground/60 text-xs">
+              @{userProfile?.username || 'username'}
+            </p>
           </div>
         </Link>
       </div>
