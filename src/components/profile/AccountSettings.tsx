@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,19 @@ import apiClient from '@/lib/apiClient';
 import authService from '@/services/authService';
 
 interface UserProfile {
-  id: number;
+  slug?: string;
+  username?: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  firstname: string;
-  lastname: string;
+  country?: string;
+  city?: string;
+  bio?: string;
   profile_picture?: string;
-  date_joined: string;
+  github_profile?: string;
+  linkedin_profile?: string;
+  portfolio_url?: string;
+  skills?: Array<{ id: number; name: string }>;
 }
 
 interface AccountSettingsProps {
@@ -25,8 +33,8 @@ interface AccountSettingsProps {
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
   const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
+    old_password: '',
+    new_password: '',
     confirmPassword: '',
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -48,13 +56,13 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
     setPasswordError(null);
 
     // Validation
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
+    if (passwordData.new_password !== passwordData.confirmPassword) {
       setPasswordError('New passwords do not match');
       setPasswordLoading(false);
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
+    if (passwordData.new_password.length < 8) {
       setPasswordError('Password must be at least 8 characters long');
       setPasswordLoading(false);
       return;
@@ -63,20 +71,28 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
     try {
       console.log('Changing password...');
       
-      await apiClient.post('/auth/change-password/', {
-        current_password: passwordData.currentPassword,
-        new_password: passwordData.newPassword
+      // Use the correct backend endpoint for password change
+      await apiClient.patch('/profile/change-password/', {
+        old_password: passwordData.old_password,
+        new_password: passwordData.new_password
       });
       
       console.log('Password changed successfully');
       setPasswordData({
-        currentPassword: '',
-        newPassword: '',
+        old_password: '',
+        new_password: '',
         confirmPassword: '',
       });
       toast.success('Password changed successfully!');
     } catch (error) {
       console.error('Failed to change password:', error);
+      
+      // Handle authentication errors
+      if (error.status === 401 || error.status === 403) {
+        setPasswordError('Session expired. Please login again.');
+        toast.error('Session expired. Please login again.');
+        return;
+      }
       
       const errorMessage = error.message || 'Failed to change password';
       
@@ -102,29 +118,20 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
     try {
       console.log('Deleting account...');
       
-      await apiClient.delete('/auth/delete-account/');
-      
-      console.log('Account deleted successfully');
-      toast.success('Account deleted successfully');
-      authService.logout();
+      // Note: Backend doesn't seem to have delete account endpoint
+      // This would need to be implemented on the backend
+      toast.error('Account deletion is not available at this time. Please contact support.');
     } catch (error) {
       console.error('Failed to delete account:', error);
-      
-      const errorMessage = error.message || 'Failed to delete account';
-      
-      if (errorMessage.includes('Backend currently unavailable') || errorMessage.includes('Request timeout')) {
-        toast.error('Account deletion failed - backend unavailable. Please try again later.');
-      } else {
-        toast.error(errorMessage);
-      }
+      toast.error('Failed to delete account');
     } finally {
       setDeleteLoading(false);
     }
   };
 
   const canChangePassword = 
-    passwordData.currentPassword && 
-    passwordData.newPassword && 
+    passwordData.old_password && 
+    passwordData.new_password && 
     passwordData.confirmPassword;
 
   return (
@@ -149,12 +156,12 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
 
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
+              <Label htmlFor="old_password">Current Password</Label>
               <Input
-                id="currentPassword"
-                name="currentPassword"
+                id="old_password"
+                name="old_password"
                 type="password"
-                value={passwordData.currentPassword}
+                value={passwordData.old_password}
                 onChange={handlePasswordChange}
                 required
                 disabled={passwordLoading}
@@ -162,12 +169,12 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
+              <Label htmlFor="new_password">New Password</Label>
               <Input
-                id="newPassword"
-                name="newPassword"
+                id="new_password"
+                name="new_password"
                 type="password"
-                value={passwordData.newPassword}
+                value={passwordData.new_password}
                 onChange={handlePasswordChange}
                 required
                 disabled={passwordLoading}
@@ -214,20 +221,23 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium">Account ID</Label>
-              <p className="text-sm text-muted-foreground">#{profile.id}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Member Since</Label>
+              <Label className="text-sm font-medium">Username</Label>
               <p className="text-sm text-muted-foreground">
-                {new Date(profile.date_joined).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                {profile.username || 'Not set'}
               </p>
             </div>
+            <div>
+              <Label className="text-sm font-medium">Email</Label>
+              <p className="text-sm text-muted-foreground">{profile.email}</p>
+            </div>
           </div>
+          
+          {profile.slug && (
+            <div>
+              <Label className="text-sm font-medium">Profile Slug</Label>
+              <p className="text-sm text-muted-foreground">{profile.slug}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -248,32 +258,9 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ profile }) => {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Deleting your account is permanent and cannot be undone. All your data will be lost.
+              Account deletion is currently not available. Please contact support if you need to delete your account.
             </AlertDescription>
           </Alert>
-
-          <div className="space-y-2">
-            <Label htmlFor="deleteConfirm">
-              Type "DELETE" to confirm account deletion
-            </Label>
-            <Input
-              id="deleteConfirm"
-              value={deleteConfirm}
-              onChange={(e) => setDeleteConfirm(e.target.value)}
-              placeholder="Type DELETE here"
-              disabled={deleteLoading}
-            />
-          </div>
-
-          <Button
-            variant="destructive"
-            onClick={handleDeleteAccount}
-            disabled={deleteLoading || deleteConfirm !== 'DELETE'}
-            className="flex items-center gap-2"
-          >
-            {deleteLoading ? <Loader className="h-4 w-4 animate-spin" /> : <Trash2 size={16} />}
-            {deleteLoading ? "Deleting Account..." : "Delete Account"}
-          </Button>
         </CardContent>
       </Card>
     </div>

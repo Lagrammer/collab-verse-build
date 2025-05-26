@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,12 +14,19 @@ import apiClient from '@/lib/apiClient';
 import { toast } from '@/components/ui/sonner';
 
 interface UserProfile {
-  id: number;
+  slug?: string;
+  username?: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  firstname: string;
-  lastname: string;
+  country?: string;
+  city?: string;
+  bio?: string;
   profile_picture?: string;
-  date_joined: string;
+  github_profile?: string;
+  linkedin_profile?: string;
+  portfolio_url?: string;
+  skills?: Array<{ id: number; name: string }>;
 }
 
 const Profile = () => {
@@ -34,24 +42,34 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      console.log('Fetching user profile from backend...');
+      console.log('Fetching user profile from backend using correct endpoint...');
       
-      // Try to fetch from backend first
-      const response = await apiClient.get<UserProfile>('/auth/profile/');
+      // Use the correct backend endpoint
+      const response = await apiClient.get<UserProfile>('/profile/me/');
       console.log('Profile fetched successfully:', response);
       setProfile(response);
     } catch (error) {
       console.error('Failed to fetch profile from backend:', error);
       
-      // Fallback to mock data if backend is unavailable
+      // Check if it's an authentication error
+      if (error.status === 401 || error.status === 403) {
+        console.log('Authentication error - redirecting to login');
+        toast.error('Session expired. Please login again.');
+        navigate('/login');
+        return;
+      }
+      
+      // Fallback to mock data for other errors
       console.log('Using mock profile data as fallback');
       const mockProfile: UserProfile = {
-        id: 1,
+        first_name: 'John',
+        last_name: 'Doe', 
         email: 'user@example.com',
-        firstname: 'John',
-        lastname: 'Doe',
+        username: 'johndoe',
         profile_picture: 'https://i.pravatar.cc/100?img=33',
-        date_joined: '2024-01-15T10:30:00Z'
+        bio: 'Software developer passionate about creating amazing applications.',
+        city: 'San Francisco',
+        country: 'USA'
       };
       setProfile(mockProfile);
       toast.error('Using offline mode - changes will not be saved');
@@ -101,17 +119,20 @@ const Profile = () => {
             <CardHeader className="pb-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={profile.profile_picture} alt={`${profile.firstname} ${profile.lastname}`} />
+                  <AvatarImage src={profile.profile_picture} alt={`${profile.first_name} ${profile.last_name}`} />
                   <AvatarFallback className="text-lg">
-                    {profile.firstname.charAt(0)}{profile.lastname.charAt(0)}
+                    {profile.first_name?.charAt(0) || ''}{profile.last_name?.charAt(0) || ''}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <CardTitle className="text-2xl">{profile.firstname} {profile.lastname}</CardTitle>
+                  <CardTitle className="text-2xl">{profile.first_name} {profile.last_name}</CardTitle>
                   <CardDescription className="text-base">{profile.email}</CardDescription>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Member since {new Date(profile.date_joined).toLocaleDateString()}
-                  </p>
+                  {profile.username && (
+                    <p className="text-sm text-muted-foreground mt-1">@{profile.username}</p>
+                  )}
+                  {profile.bio && (
+                    <p className="text-sm mt-2">{profile.bio}</p>
+                  )}
                 </div>
               </div>
             </CardHeader>

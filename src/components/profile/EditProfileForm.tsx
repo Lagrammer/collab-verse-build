@@ -1,20 +1,29 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import apiClient from '@/lib/apiClient';
 
 interface UserProfile {
-  id: number;
+  slug?: string;
+  username?: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  firstname: string;
-  lastname: string;
+  country?: string;
+  city?: string;
+  bio?: string;
   profile_picture?: string;
-  date_joined: string;
+  github_profile?: string;
+  linkedin_profile?: string;
+  portfolio_url?: string;
+  skills?: Array<{ id: number; name: string }>;
 }
 
 interface EditProfileFormProps {
@@ -25,14 +34,20 @@ interface EditProfileFormProps {
 
 const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile, onUpdate, onSuccess }) => {
   const [formData, setFormData] = useState({
-    firstname: profile.firstname,
-    lastname: profile.lastname,
-    email: profile.email,
+    username: profile.username || '',
+    first_name: profile.first_name || '',
+    last_name: profile.last_name || '',
+    bio: profile.bio || '',
+    country: profile.country || '',
+    city: profile.city || '',
+    github_profile: profile.github_profile || '',
+    linkedin_profile: profile.linkedin_profile || '',
+    portfolio_url: profile.portfolio_url || '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -48,8 +63,8 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile, onUpdate, on
     try {
       console.log('Updating profile with data:', formData);
       
-      // Try to update via backend API
-      const response = await apiClient.put<UserProfile>('/auth/profile/', formData);
+      // Use the correct backend endpoint for profile updates
+      const response = await apiClient.patch<UserProfile>('/profile/me/', formData);
       console.log('Profile updated successfully:', response);
       
       onUpdate(formData);
@@ -58,7 +73,13 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile, onUpdate, on
     } catch (error) {
       console.error('Failed to update profile:', error);
       
-      // If backend is unavailable, show offline message but update local state
+      // Handle authentication errors
+      if (error.status === 401 || error.status === 403) {
+        setError('Session expired. Please login again.');
+        toast.error('Session expired. Please login again.');
+        return;
+      }
+      
       const errorMessage = error.message || 'Failed to update profile';
       
       if (errorMessage.includes('Backend currently unavailable') || errorMessage.includes('Request timeout')) {
@@ -73,10 +94,9 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile, onUpdate, on
     }
   };
 
-  const hasChanges = 
-    formData.firstname !== profile.firstname ||
-    formData.lastname !== profile.lastname ||
-    formData.email !== profile.email;
+  const hasChanges = Object.keys(formData).some(key => 
+    formData[key] !== (profile[key] || '')
+  );
 
   return (
     <Card>
@@ -96,27 +116,39 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile, onUpdate, on
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstname">First Name</Label>
+              <Label htmlFor="first_name">First Name</Label>
               <Input
-                id="firstname"
-                name="firstname"
-                value={formData.firstname}
+                id="first_name"
+                name="first_name"
+                value={formData.first_name}
                 onChange={handleInputChange}
                 required
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastname">Last Name</Label>
+              <Label htmlFor="last_name">Last Name</Label>
               <Input
-                id="lastname"
-                name="lastname"
-                value={formData.lastname}
+                id="last_name"
+                name="last_name"
+                value={formData.last_name}
                 onChange={handleInputChange}
                 required
                 disabled={loading}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="Enter your username"
+            />
           </div>
           
           <div className="space-y-2">
@@ -125,14 +157,98 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile, onUpdate, on
               id="email"
               name="email"
               type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              required
-              disabled={loading}
+              value={profile.email}
+              disabled
+              className="bg-muted"
             />
             <p className="text-sm text-muted-foreground">
-              Changing your email will require verification.
+              Email cannot be changed from this form.
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="bio">Bio</Label>
+            <Textarea
+              id="bio"
+              name="bio"
+              value={formData.bio}
+              onChange={handleInputChange}
+              disabled={loading}
+              placeholder="Tell us about yourself..."
+              rows={3}
+              maxLength={100}
+            />
+            <p className="text-sm text-muted-foreground">
+              {formData.bio.length}/100 characters
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Input
+                id="country"
+                name="country"
+                value={formData.country}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="e.g. United States"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="e.g. San Francisco"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Social Links</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="github_profile">GitHub Profile</Label>
+              <Input
+                id="github_profile"
+                name="github_profile"
+                type="url"
+                value={formData.github_profile}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="https://github.com/yourusername"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="linkedin_profile">LinkedIn Profile</Label>
+              <Input
+                id="linkedin_profile"
+                name="linkedin_profile"
+                type="url"
+                value={formData.linkedin_profile}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="https://linkedin.com/in/yourusername"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="portfolio_url">Portfolio URL</Label>
+              <Input
+                id="portfolio_url"
+                name="portfolio_url"
+                type="url"
+                value={formData.portfolio_url}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="https://yourportfolio.com"
+              />
+            </div>
           </div>
 
           <div className="flex gap-4 pt-4">
@@ -148,9 +264,15 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile, onUpdate, on
               type="button" 
               variant="outline" 
               onClick={() => setFormData({
-                firstname: profile.firstname,
-                lastname: profile.lastname,
-                email: profile.email,
+                username: profile.username || '',
+                first_name: profile.first_name || '',
+                last_name: profile.last_name || '',
+                bio: profile.bio || '',
+                country: profile.country || '',
+                city: profile.city || '',
+                github_profile: profile.github_profile || '',
+                linkedin_profile: profile.linkedin_profile || '',
+                portfolio_url: profile.portfolio_url || '',
               })}
               disabled={loading || !hasChanges}
             >
