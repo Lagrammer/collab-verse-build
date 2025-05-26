@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,25 +13,56 @@ import ShareIdeaModal from '@/components/ideas/ShareIdeaModal';
 import IdeaCard from '@/components/ideas/IdeaCard';
 import { ideaService, Idea } from '@/services/ideaService';
 import { toast } from '@/components/ui/sonner';
+import { STORAGE_KEYS } from '@/config/api';
 
 const Index = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch all ideas
   const { data: allIdeas = [], isLoading: isLoadingAll, error: errorAll } = useQuery({
     queryKey: ['ideas'],
-    queryFn: ideaService.getIdeas,
+    queryFn: async () => {
+      try {
+        return await ideaService.getIdeas();
+      } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+          console.log('Authentication error in ideas fetch - redirecting to login');
+          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+          navigate('/login');
+          throw error;
+        }
+        throw error;
+      }
+    },
   });
 
   // Fetch ideas for contribution
   const { data: contributionIdeas = [], isLoading: isLoadingContribution, error: errorContribution } = useQuery({
     queryKey: ['ideas-for-contribution'],
-    queryFn: ideaService.getIdeasForContribution,
+    queryFn: async () => {
+      try {
+        return await ideaService.getIdeasForContribution();
+      } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+          console.log('Authentication error in contribution ideas fetch - redirecting to login');
+          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+          navigate('/login');
+          throw error;
+        }
+        throw error;
+      }
+    },
   });
 
   const handleIdeaCreated = () => {
+    console.log('Idea created - refreshing queries');
     queryClient.invalidateQueries({ queryKey: ['ideas'] });
     queryClient.invalidateQueries({ queryKey: ['ideas-for-contribution'] });
     setShowShareModal(false);

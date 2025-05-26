@@ -39,7 +39,7 @@ class ApiClient {
   async checkBackendAvailability(): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       
       const response = await fetch(`${this.baseUrl}/health-check/`, {
         method: 'HEAD',
@@ -61,10 +61,12 @@ class ApiClient {
     const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
     
     if (!refreshToken) {
+      console.log('No refresh token available');
       return false;
     }
     
     try {
+      console.log('Attempting to refresh token...');
       const response = await fetch(`${this.baseUrl}/auth/token/refresh/`, {
         method: 'POST',
         headers: {
@@ -74,6 +76,7 @@ class ApiClient {
       });
       
       if (!response.ok) {
+        console.log('Token refresh failed with status:', response.status);
         throw new Error('Failed to refresh token');
       }
       
@@ -81,9 +84,14 @@ class ApiClient {
       localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.access);
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh);
       
+      console.log('Token refreshed successfully');
       return true;
     } catch (error) {
       console.error('Token refresh failed:', error);
+      // Clear invalid tokens
+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.USER_DATA);
       return false;
     }
   }
@@ -121,7 +129,16 @@ class ApiClient {
       clearTimeout(timeoutId);
       
       // Handle 401 errors (unauthorized) by refreshing the token
-      if (response.status === 401 && !skipAuthCheck) {
+      if (response.status === 401 || response.status === 403) {
+        if (skipAuthCheck) {
+          // Already tried refresh, authentication has failed
+          throw {
+            status: response.status,
+            message: 'Authentication failed',
+            data: {},
+          };
+        }
+
         if (this.isRefreshing) {
           // If a refresh is already in progress, wait for it to complete
           return new Promise((resolve, reject) => {
@@ -129,7 +146,7 @@ class ApiClient {
               try {
                 const newResponse = await this.request<T>(endpoint, {
                   ...options,
-                  skipAuthCheck: true, // Prevent infinite loop
+                  skipAuthCheck: true,
                 });
                 resolve(newResponse);
               } catch (err) {
@@ -141,10 +158,10 @@ class ApiClient {
           this.isRefreshing = true;
           
           const refreshed = await this.refreshAuthToken();
+          this.isRefreshing = false;
           
           if (refreshed) {
             // Token refreshed successfully, retry the request with the new token
-            this.isRefreshing = false;
             this.onTokenRefreshed();
             
             const newToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -158,12 +175,12 @@ class ApiClient {
               headers: newHeaders,
             });
           } else {
-            // Token refresh failed, log the user out
-            this.isRefreshing = false;
-            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-            window.location.href = '/login';
-            throw new Error('Authentication failed. Please login again.');
+            // Token refresh failed, throw error to let calling code handle it
+            throw {
+              status: 403,
+              message: 'Session expired',
+              data: {},
+            };
           }
         }
       }
@@ -206,7 +223,7 @@ class ApiClient {
       ...options,
       method: 'POST',
       body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
-      headers: isFormData ? {} : options.headers, // Let browser set content-type for FormData
+      headers: isFormData ? {} : options.headers,
     });
   }
 

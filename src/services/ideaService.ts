@@ -1,4 +1,3 @@
-
 import apiClient from '@/lib/apiClient';
 import { toast } from '@/components/ui/sonner';
 
@@ -52,10 +51,18 @@ export const ideaService = {
    */
   async getIdeas(): Promise<Idea[]> {
     try {
+      console.log('Fetching all ideas...');
       const response = await apiClient.get<Idea[]>('/ideas/');
+      console.log('Ideas fetched successfully:', response);
       return response;
     } catch (error) {
       console.error('Failed to fetch ideas:', error);
+      
+      // Handle authentication errors by not showing error toast
+      if (error.status === 401 || error.status === 403) {
+        throw error; // Let the calling component handle auth errors
+      }
+      
       toast.error('Failed to load ideas');
       throw error;
     }
@@ -66,10 +73,18 @@ export const ideaService = {
    */
   async getIdeasForContribution(): Promise<Idea[]> {
     try {
+      console.log('Fetching ideas for contribution...');
       const response = await apiClient.get<Idea[]>('/ideas/for-contribution/');
+      console.log('Contribution ideas fetched successfully:', response);
       return response;
     } catch (error) {
       console.error('Failed to fetch ideas for contribution:', error);
+      
+      // Handle authentication errors by not showing error toast
+      if (error.status === 401 || error.status === 403) {
+        throw error; // Let the calling component handle auth errors
+      }
+      
       toast.error('Failed to load contribution opportunities');
       throw error;
     }
@@ -94,6 +109,8 @@ export const ideaService = {
    */
   async createIdea(data: CreateIdeaRequest): Promise<Idea> {
     try {
+      console.log('Creating new idea with data:', data);
+      
       const formData = new FormData();
       formData.append('description', data.description);
       
@@ -101,18 +118,21 @@ export const ideaService = {
         formData.append('is_open_for_contribution', data.is_open_for_contribution.toString());
       }
       
-      if (data.images) {
-        data.images.forEach((image, index) => {
-          formData.append(`images`, image);
+      if (data.images && data.images.length > 0) {
+        data.images.forEach((image) => {
+          formData.append('images', image);
         });
       }
 
+      console.log('Sending form data to backend...');
       const response = await apiClient.post<Idea>('/ideas/', formData);
+      console.log('Idea created successfully:', response);
       toast.success('Idea shared successfully!');
       return response;
     } catch (error) {
       console.error('Failed to create idea:', error);
-      toast.error('Failed to share idea');
+      const errorMessage = error.message || 'Failed to share idea';
+      toast.error(errorMessage);
       throw error;
     }
   },

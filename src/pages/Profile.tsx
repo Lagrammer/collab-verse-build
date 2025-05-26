@@ -12,6 +12,7 @@ import AccountSettings from '@/components/profile/AccountSettings';
 import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
 import apiClient from '@/lib/apiClient';
 import { toast } from '@/components/ui/sonner';
+import { STORAGE_KEYS } from '@/config/api';
 
 interface UserProfile {
   slug?: string;
@@ -42,9 +43,18 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      console.log('Fetching user profile from backend using correct endpoint...');
+      console.log('Fetching user profile from backend...');
       
-      // Use the correct backend endpoint
+      // Check if we have valid tokens first
+      const accessToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      
+      if (!accessToken || !refreshToken) {
+        console.log('No tokens found - redirecting to login');
+        navigate('/login');
+        return;
+      }
+      
       const response = await apiClient.get<UserProfile>('/profile/me/');
       console.log('Profile fetched successfully:', response);
       setProfile(response);
@@ -53,26 +63,18 @@ const Profile = () => {
       
       // Check if it's an authentication error
       if (error.status === 401 || error.status === 403) {
-        console.log('Authentication error - redirecting to login');
+        console.log('Authentication error - clearing tokens and redirecting to login');
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.USER_DATA);
         toast.error('Session expired. Please login again.');
         navigate('/login');
         return;
       }
       
-      // Fallback to mock data for other errors
-      console.log('Using mock profile data as fallback');
-      const mockProfile: UserProfile = {
-        first_name: 'John',
-        last_name: 'Doe', 
-        email: 'user@example.com',
-        username: 'johndoe',
-        profile_picture: 'https://i.pravatar.cc/100?img=33',
-        bio: 'Software developer passionate about creating amazing applications.',
-        city: 'San Francisco',
-        country: 'USA'
-      };
-      setProfile(mockProfile);
-      toast.error('Using offline mode - changes will not be saved');
+      // For other errors, show error message but don't redirect
+      console.log('Non-auth error, staying on profile page');
+      toast.error('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
     }
