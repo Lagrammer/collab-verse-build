@@ -40,14 +40,44 @@ const ShareIdeaModal: React.FC<ShareIdeaModalProps> = ({ open, onClose, onSucces
     }));
   };
 
+  const validateImage = (file: File): boolean => {
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      return false;
+    }
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + images.length > 5) {
+    
+    // Validate each file
+    const validFiles = files.filter(file => {
+      if (!validateImage(file)) {
+        setError(`Invalid file: ${file.name}. Only images under 5MB are allowed.`);
+        return false;
+      }
+      return true;
+    });
+    
+    if (validFiles.length + images.length > 5) {
       setError('Maximum 5 images allowed');
       return;
     }
-    setImages(prev => [...prev, ...files]);
-    setError(null);
+    
+    if (validFiles.length > 0) {
+      setImages(prev => [...prev, ...validFiles]);
+      setError(null);
+    }
+    
+    // Clear the input
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -66,6 +96,12 @@ const ShareIdeaModal: React.FC<ShareIdeaModalProps> = ({ open, onClose, onSucces
     setError(null);
 
     try {
+      console.log('Creating idea with validated data:', {
+        description: formData.description,
+        imagesCount: images.length,
+        is_open_for_contribution: formData.isOpenForContribution,
+      });
+
       await ideaService.createIdea({
         description: formData.description,
         images: images.length > 0 ? images : undefined,
@@ -80,6 +116,7 @@ const ShareIdeaModal: React.FC<ShareIdeaModalProps> = ({ open, onClose, onSucces
       setImages([]);
       onSuccess();
     } catch (error) {
+      console.error('Error creating idea:', error);
       setError(error.message || 'Failed to share idea');
     } finally {
       setLoading(false);
@@ -167,7 +204,7 @@ const ShareIdeaModal: React.FC<ShareIdeaModalProps> = ({ open, onClose, onSucces
               )}
               
               <p className="text-sm text-muted-foreground">
-                Upload up to 5 images to help visualize your idea.
+                Upload up to 5 images (max 5MB each) to help visualize your idea.
               </p>
             </div>
           </div>

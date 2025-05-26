@@ -219,33 +219,46 @@ class ApiClient {
   async post<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
     const isFormData = data instanceof FormData;
     
+    // For FormData, don't set Content-Type header - let browser set it with boundary
+    const headers = isFormData ? 
+      { ...options.headers } : 
+      { ...DEFAULT_HEADERS, ...options.headers };
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
       body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
-      headers: isFormData ? {} : options.headers,
+      headers,
     });
   }
 
   async put<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
     const isFormData = data instanceof FormData;
     
+    const headers = isFormData ? 
+      { ...options.headers } : 
+      { ...DEFAULT_HEADERS, ...options.headers };
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
       body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
-      headers: isFormData ? {} : options.headers,
+      headers,
     });
   }
 
   async patch<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
     const isFormData = data instanceof FormData;
     
+    const headers = isFormData ? 
+      { ...options.headers } : 
+      { ...DEFAULT_HEADERS, ...options.headers };
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
       body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
-      headers: isFormData ? {} : options.headers,
+      headers,
     });
   }
 
