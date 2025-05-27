@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Search, Heart, MessageSquare, Share2, Bookmark } from 'lucide-react';
 

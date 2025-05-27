@@ -87,59 +87,25 @@ const RightSidebar: React.FC = () => {
             General
           </button>
           <button className="flex-1 py-3 text-center border-b-2 border-transparent text-muted-foreground hover:text-foreground">
-            Groups(3)
+            Groups
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        <UserMessage
-          name="Lance Andala"
-          message="Check the blueprints"
-          avatar="https://i.pravatar.cc/100?img=69"
-          unread
-        />
-        <UserMessage
-          name="Dennis Muil"
-          message="Well received! Thanks"
-          avatar="https://i.pravatar.cc/100?img=50"
-        />
-        <UserMessage
-          name="Kevin Mitnick"
-          message="Ok"
-          avatar="https://i.pravatar.cc/100?img=43"
-        />
-        <UserMessage
-          name="Daniela Jackson"
-          message="2 new messages"
-          avatar="https://i.pravatar.cc/100?img=23"
-          unread
-        />
-        <UserMessage
-          name="Juliet Makarey"
-          message="Lol u right"
-          avatar="https://i.pravatar.cc/100?img=32"
-        />
-        <UserMessage
-          name="Chantal Msiza"
-          message="Just finished the Typescript"
-          avatar="https://i.pravatar.cc/100?img=15"
-        />
+        {/* Messages will be populated from API data */}
+        <div className="text-center text-muted-foreground py-8 text-sm">
+          No messages
+        </div>
       </div>
 
       <div className="p-4 border-t border-border">
         <h3 className="font-medium mb-3">Community Requests</h3>
         <div className="space-y-3">
-          <CommunityRequest
-            name="Hajia Bintu"
-            avatar="https://i.pravatar.cc/100?img=5"
-            message="Wants to join your community"
-          />
-          <CommunityRequest
-            name="Jacqueline Mensah"
-            avatar="https://i.pravatar.cc/100?img=9"
-            message="Wants to join your community"
-          />
+          {/* Community requests will be populated from API data */}
+          <div className="text-center text-muted-foreground text-sm">
+            No requests
+          </div>
         </div>
       </div>
     </div>
